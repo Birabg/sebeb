@@ -1,0 +1,104 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a   hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum Role {
+  ADMIN
+  STUDENT
+}
+
+model User {
+  id            String         @id @default(uuid())
+  first_name    String
+  last_name     String
+  email         String         @unique
+  password      String
+  role          Role           @default(STUDENT)
+  created_at    DateTime       @default(now())
+  enrollments   Enrollment[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid())
+  user_id    String
+  user       User      @relation(fields: [user_id], references: [id])
+  token_hash String
+  expires_at DateTime
+  revoked_at DateTime?
+  created_at DateTime  @default(now())
+
+  @@index([user_id])
+}
+
+model Course {
+  id           String       @id @default(uuid())
+  title        String
+  description  String       @db.Text
+  price        Decimal      @db.Decimal(10, 2)
+  cover_image  String
+  is_published Boolean      @default(false)
+  created_at   DateTime     @default(now())
+  updated_at   DateTime     @updatedAt
+  deleted_at   DateTime?
+  lessons      Lesson[]
+  enrollments  Enrollment[]
+
+  @@map("courses")
+}
+
+model Lesson {
+  id               String            @id @default(uuid())
+  course_id        String
+  course           Course            @relation(fields: [course_id], references: [id])
+  title            String
+  description      String            @db.Text
+  video_id         String
+  duration_seconds Decimal
+  sort_order       Int
+  created_at       DateTime          @default(now())
+  updated_at       DateTime          @updatedAt
+  deleted_at       DateTime?
+  lessonProgresses Lesson_Progress[]
+
+  @@map("lessons")
+}
+
+model Enrollment {
+  id               String            @id @default(uuid())
+  user_id          String
+  user             User              @relation(fields: [user_id], references: [id])
+  course_id        String
+  course           Course            @relation(fields: [course_id], references: [id])
+  amount_paid      Decimal           @db.Decimal(10, 2)
+  payment_ref      String
+  enrolled_at      DateTime          @default(now())
+  lessonProgresses Lesson_Progress[]
+
+  @@unique([user_id, course_id])
+  @@map("enrollments")
+}
+
+model Lesson_Progress {
+  id              String     @id @default(uuid())
+  enrollment_id   String
+  enrollment      Enrollment @relation(fields: [enrollment_id], references: [id])
+  lesson_id       String
+  lesson          Lesson     @relation(fields: [lesson_id], references: [id])
+  watched_second  Decimal
+  is_completed    Boolean    @default(false)
+  last_watched_at DateTime
+
+  @@unique([enrollment_id, lesson_id])
+}
